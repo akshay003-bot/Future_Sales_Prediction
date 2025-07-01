@@ -1,1 +1,1 @@
-# Future_Sales_Prediction
+Forecasting future product sales enables businesses to better control manufacturing and advertising expenses. Beyond cost management, sales prediction offers several additional advantages, such as improved inventory planning, resource allocation, and strategic decision-making.
