@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sales Predictor with Graphs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        .background-pattern {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="10" cy="60" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            z-index: -1;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        .predictor-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        .charts-container {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .chart-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideIn 0.6s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+            to { text-shadow: 0 2px 20px rgba(255,255,255,0.4); }
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .chart-title {
+            color: white;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            position: relative;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .form-group:nth-child(1) { animation-delay: 0.1s; }
+        .form-group:nth-child(2) { animation-delay: 0.2s; }
+        .form-group:nth-child(3) { animation-delay: 0.3s; }
+        
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .input-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 15px;
+            font-size: 16px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.15);
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(255,255,255,0.1);
+        }
+        
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.6);
+            font-size: 18px;
+        }
+        
+        .predict-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #ff6b6b, #ffa726);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+        
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(255, 107, 107, 0.4);
+        }
+        
+        .predict-btn:active {
+            transform: translateY(0);
+        }
+        
+        .predict-btn:disabled {
+            background: rgba(255,255,255,0.2);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.6);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to { transform: scale(4); opacity: 0; }
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            text-align: center;
+            font-size: 20px;
+            color: white;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: resultSlide 0.5s ease-out;
+        }
+        
+        @keyframes resultSlide {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .result.success {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        
+        .result.error {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: rgba(244, 67, 54, 0.5);
+        }
+        
+        .result-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .result-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin: 10px 0;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .result-details {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .progress-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffa726);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .chart-canvas {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .chart-canvas.large {
+            height: 400px;
+        }
+        
+        .floating-elements {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .floating-element {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+        
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .predictor-container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .chart-canvas {
+                height: 250px;
+            }
+            
+            .chart-canvas.large {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-pattern"></div>
+    <div class="floating-elements"></div>
+    
+    <div class="main-container">
+        <!-- Predictor Section -->
+        <div class="predictor-container">
+            <h1>🚀 AI Sales Predictor</h1>
+            <p class="subtitle">Predict your sales with machine learning precision</p>
+            
+            <form id="predictionForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tv">📺 TV Advertising</label>
+                        <div class="input-container">
+                            <input type="number" id="tv" step="0.1" placeholder="230.1" required>
+                            <div class="input-icon">$</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="radio">📻 Radio Advertising</label>
+                        <div class="input-container">
+                            <input type="number" id="radio" step="0.1" placeholder="37.8" required>
+                            <div class="input-icon">$</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newspaper">📰 Newspaper Advertising</label>
+                        <div class="input-container">
+                            <input type="number" id="newspaper" step="0.1" placeholder="69.2" required>
+                            <div class="input-icon">$</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <button type="submit" class="predict-btn" id="predictBtn">
+                    Predict Sales Revenue
+                </button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                AI is analyzing your data...
+            </div>
+            
+            <div class="result" id="result">
+                <div class="result-icon" id="resultIcon"></div>
+                <div class="result-value" id="resultValue"></div>
+                <div class="result-details" id="resultDetails"></div>
+                
+                <div class="stats-grid" id="statsGrid" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-label">TV Impact</div>
+                        <div class="stat-value" id="tvImpact">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Radio Impact</div>
+                        <div class="stat-value" id="radioImpact">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Print Impact</div>
+                        <div class="stat-value" id="printImpact">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Section -->
+        <div class="charts-container">
+            <!-- Advertising Spend Distribution -->
+            <div class="chart-card">
+                <h3 class="chart-title">📊 Advertising Spend Distribution</h3>
+                <div class="chart-canvas">
+                    <canvas id="spendChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Sales Prediction Breakdown -->
+            <div class="chart-card">
+                <h3 class="chart-title">📈 Sales Prediction Breakdown</h3>
+                <div class="chart-canvas">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- ROI Analysis -->
+            <div class="chart-card">
+                <h3 class="chart-title">💰 ROI Analysis</h3>
+                <div class="chart-canvas large">
+                    <canvas id="roiChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart instances
+        let spendChart = null;
+        let predictionChart = null;
+        let roiChart = null;
+        
+        // Initialize floating elements
+        function createFloatingElements() {
+            const container = document.querySelector('.floating-elements');
+            for (let i = 0; i < 20; i++) {
+                const element = document.createElement('div');
+                element.className = 'floating-element';
+                element.style.left = Math.random() * 100 + '%';
+                element.style.animationDelay = Math.random() * 6 + 's';
+                element.style.animationDuration = (Math.random() * 3 + 4) + 's';
+                container.appendChild(element);
+            }
+        }
+        
+        // Initialize charts
+        function initializeCharts() {
+            // Advertising Spend Distribution (Doughnut Chart)
+            const spendCtx = document.getElementById('spendChart').getContext('2d');
+            spendChart = new Chart(spendCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['TV', 'Radio', 'Newspaper'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 167, 38, 0.8)',
+                            'rgba(76, 175, 80, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 107, 107, 1)',
+                            'rgba(255, 167, 38, 1)',
+                            'rgba(76, 175, 80, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: 'white',
+                                padding: 20,
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Sales Prediction Breakdown (Bar Chart)
+            const predictionCtx = document.getElementById('predictionChart').getContext('2d');
+            predictionChart = new Chart(predictionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['TV Contribution', 'Radio Contribution', 'Newspaper Contribution'],
+                    datasets: [{
+                        label: 'Sales Contribution ($K)',
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            'rgba(255, 107, 107, 0.8)',
+                            'rgba(255, 167, 38, 0.8)',
+                            'rgba(76, 175, 80, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 107, 107, 1)',
+                            'rgba(255, 167, 38, 1)',
+                            'rgba(76, 175, 80, 1)'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 10,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'white'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'white'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // ROI Analysis (Line Chart)
+            const roiCtx = document.getElementById('roiChart').getContext('2d');
+            roiChart = new Chart(roiCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Current', '+10%', '+20%', '+30%', '+40%', '+50%'],
+                    datasets: [{
+                        label: 'TV ROI',
+                        data: [0, 0, 0, 0, 0, 0],
+                        borderColor: 'rgba(255, 107, 107, 1)',
+                        backgroundColor: 'rgba(255, 107, 107, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Radio ROI',
+                        data: [0, 0, 0, 0, 0, 0],
+                        borderColor: 'rgba(255, 167, 38, 1)',
+                        backgroundColor: 'rgba(255, 167, 38, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Newspaper ROI',
+                        data: [0, 0, 0, 0, 0, 0],
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: 'white'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'white'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update charts with new data
+        function updateCharts(inputs, prediction) {
+            const { tv, radio, newspaper } = inputs;
+            const totalSpend = tv + radio + newspaper;
+            
+            // Update spend distribution chart
+            spendChart.data.datasets[0].data = [tv, radio, newspaper];
+            spendChart.update();
+            
+            // Calculate contributions (simplified model)
+            const tvContribution = prediction * (tv / totalSpend) * 0.8;
+            const radioContribution = prediction * (radio / totalSpend) * 0.6;
+            const newspaperContribution = prediction * (newspaper / totalSpend) * 0.4;
+            
+            // Update prediction breakdown chart
+            predictionChart.data.datasets[0].data = [
+                tvContribution,
+                radioContribution,
+                newspaperContribution
+            ];
+            predictionChart.update();
+            
+            // Calculate ROI projections
+            const baseROI = prediction / totalSpend;
+            const tvROI = [
+                baseROI * 1.2,
+                baseROI * 1.25,
+                baseROI * 1.3,
+                baseROI * 1.35,
+                baseROI * 1.4,
+                baseROI * 1.45
+            ];
+            const radioROI = [
+                baseROI * 1.1,
+                baseROI * 1.18,
+                baseROI * 1.25,
+                baseROI * 1.3,
+                baseROI * 1.35,
+                baseROI * 1.38
+            ];
+            const newspaperROI = [
+                baseROI * 0.9,
+                baseROI * 0.95,
+                baseROI * 1.0,
+                baseROI * 1.05,
+                baseROI * 1.08,
+                baseROI * 1.1
+            ];
+            
+            // Update ROI chart
+            roiChart.data.datasets[0].data = tvROI;
+            roiChart.data.datasets[1].data = radioROI;
+            roiChart.data.datasets[2].data = newspaperROI;
+            roiChart.update();
+        }
+        
+        // Button ripple effect
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const ripple = document.createElement('span');
+            const rect = button.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = event.clientX - rect.left - size / 2;
+            const y = event.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.classList.add('btn-ripple');
+            
+            button.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 600);
+        }
+        
+        // Form validation with progress
+        function updateProgress() {
+            const inputs = document.querySelectorAll('input[required]');
+            const filled = Array.from(inputs).filter(input => input.value.trim() !== '').length;
+            const progress = (filled / inputs.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Update charts with current values for preview
+            if (filled === 3) {
+                const tv = parseFloat(document.getElementById('tv').value) || 0;
+                const radio = parseFloat(document.getElementById('radio').value) || 0;
+                const newspaper = parseFloat(document.getElementById('newspaper').value) || 0;
+                
+                if (tv > 0 || radio > 0 || newspaper > 0) {
+                    spendChart.data.datasets[0].data = [tv, radio, newspaper];
+                    spendChart.update();
+                }
+            }
+            
+            return progress === 100;
+        }
+        
+        // Calculate impact percentages
+        function calculateImpacts(tv, radio, newspaper) {
+            const total = tv + radio + newspaper;
+            return {
+                tv: ((tv / total) * 100).toFixed(1),
+                radio: ((radio / total) * 100).toFixed(1),
+                newspaper: ((newspaper / total) * 100).toFixed(1)
+            };
+        }
+        
+        // Enhanced result display
+        function showResult(prediction, inputs, isError = false) {
+            const result = document.getElementById('result');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultValue = document.getElementById('resultValue');
+            const resultDetails = document.getElementById('resultDetails');
+            const statsGrid = document.getElementById('statsGrid');
+            
+            if (isError) {
+                result.className = 'result error';
+                resultIcon.textContent = '❌';
+                resultValue.textContent = 'Error';
+                resultDetails.textContent = prediction;
+                statsGrid.style.display = 'none';
+            } else {
+                result.className = 'result success';
+                resultIcon.textContent = '💰';
+                resultValue.textContent = `$${prediction.toFixed(2)}K`;
+                resultDetails.textContent = `Predicted sales revenue based on your advertising spend of $${(inputs.tv + inputs.radio + inputs.newspaper).toFixed(2)}K`;
+                
+                // Show impact stats
+                const impacts = calculateImpacts(inputs.tv, inputs.radio, inputs.newspaper);
+                document.getElementById('tvImpact').textContent = impacts.tv + '%';
+                document.getElementById('radioImpact').textContent = impacts.radio + '%';
+                document.getElementById('printImpact').textContent = impacts.newspaper + '%';
+                statsGrid.style.display = 'grid';
+                
+                // Update charts with prediction data
+                updateCharts(inputs, prediction);
+            }
+            
+            result.style.display = 'block';
+        }
+        
+        // Simulate prediction (since we don't have a real backend)
+        function simulatePrediction(tv, radio, newspaper) {
+            // Simple linear regression simulation
+            // These coefficients are based on typical advertising effectiveness
+            const tvCoeff = 0.045;
+            const radioCoeff = 0.188;
+            const newspaperCoeff = 0.002;
+            const intercept = 2.939;
+            
+            const prediction = intercept + (tv * tvCoeff) + (radio * radioCoeff) + (newspaper * newspaperCoeff);
+            return Math.max(0, prediction);
+        }
+        
+        // Enhanced form submission with animations
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            const tvValue = parseFloat(document.getElementById('tv').value);
+            const radioValue = parseFloat(document.getElementById('radio').value);
+            const newspaperValue = parseFloat(document.getElementById('newspaper').value);
+            
+            if (isNaN(tvValue) || isNaN(radioValue) || isNaN(newspaperValue)) {
+                showResult('Please enter valid numbers for all fields.', {}, true);
+                return;
+            }
+            
+            const predictBtn = document.getElementById('predictBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            // Show loading state
+            predictBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                // Simulate API call delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Try to call backend API first
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tv: tvValue,
+                            radio: radioValue,
+                            newspaper: newspaperValue
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        showResult(data.prediction, {
+                            tv: tvValue,
+                            radio: radioValue,
+                            newspaper: newspaperValue
+                        });
+                        return;
+                    }
+                } catch (fetchError) {
+                    // Fall back to simulation if backend is not available
+                    console.log('Backend not available, using simulation');
+                }
+                
+                // Use simulation if backend is not available
+                const prediction = simulatePrediction(tvValue, radioValue, newspaperValue);
+                showResult(prediction, {
+                    tv: tvValue,
+                    radio: radioValue,
+                    newspaper: newspaperValue
+                });
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showResult('An error occurred while processing your request.', {}, true);
+            } finally {
+                predictBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+        
+        // Initialize everything
+        document.addEventListener('DOMContentLoaded', function() {
+            createFloatingElements();
+            initializeCharts();
+            
+            // Add event listeners
+            document.getElementById('predictionForm').addEventListener('submit', handleSubmit);
+            document.getElementById('predictBtn').addEventListener('click', createRipple);
+            
+            // Add input listeners for progress tracking and live chart updates
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', updateProgress);
+                input.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'scale(1.02)';
+                });
+                input.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'scale(1)';
+                });
+            });
+            
+            // Initial progress update
+            updateProgress();
+            
+            // Demo data for initial display
+            setTimeout(() => {
+                const demoData = [100, 50, 25];
+                spendChart.data.datasets[0].data = demoData;
+                spendChart.update();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
